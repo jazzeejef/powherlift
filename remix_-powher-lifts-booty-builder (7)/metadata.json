@@ -1,0 +1,8 @@
+{
+  "name": "Remix: PowHER Lifts Booty Builder",
+  "description": "An empowering fitness and nutrition tracking application featuring AI coaching, workout logging, and meal planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

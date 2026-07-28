@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="powher-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f472b6" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#f472b6" flood-opacity="0.2" />
+    </filter>
+  </defs>
+  <!-- Background with gradient and rounded corners -->
+  <rect width="460" height="460" x="26" y="26" rx="110" fill="url(#powher-grad)" filter="url(#shadow)" />
+  <!-- Mathematically perfect smooth centered white heart shape -->
+  <path d="M256 380c-6 0-11-2-15-6L143 276c-34-34-34-90 0-124s90-34 124 0l3 3 3-3c34-34 90-34 124 0s34 90 0 124L271 374c-4 4-9 6-15 6z" fill="#ffffff" />
+</svg>
