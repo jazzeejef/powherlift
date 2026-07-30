@@ -9,7 +9,7 @@ import Library from './pages/Library';
 import { BackupModal } from './components/BackupModal';
 import { Page, Workout, DailyNutrition, WeightEntry } from './types';
 import { storageService } from './services/storageService';
-import { RefreshCw, Heart } from 'lucide-react';
+import { RefreshCw, Heart, Sparkles } from 'lucide-react';
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +26,21 @@ const App: React.FC = () => {
   
   const [isHydrated, setIsHydrated] = useState(false);
   const [hydrationError, setHydrationError] = useState<string | null>(null);
+  const [lastHydratedAt, setLastHydratedAt] = useState<string | null>(null);
+
+  // Non-blocking PWA SW update trigger
+  const [swUpdateCallback, setSwUpdateCallback] = useState<(() => void) | null>(null);
+
+  useEffect(() => {
+    const handleSwUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && typeof customEvent.detail.applyUpdate === 'function') {
+        setSwUpdateCallback(() => customEvent.detail.applyUpdate);
+      }
+    };
+    window.addEventListener('swUpdateAvailable', handleSwUpdate);
+    return () => window.removeEventListener('swUpdateAvailable', handleSwUpdate);
+  }, []);
 
   // Map URL pathname to Page enum
   const getPageFromPath = (pathname: string): Page => {
@@ -117,6 +132,9 @@ const App: React.FC = () => {
       setWorkouts(sanitizeWorkouts(savedWorkouts));
       setNutritionHistory(Array.isArray(savedNutrition) ? savedNutrition : []);
       setWeightHistory(Array.isArray(savedWeight) ? savedWeight : []);
+      
+      const now = new Date();
+      setLastHydratedAt(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + now.toLocaleDateString() + ')');
     } catch (err) {
       console.error('[App] Failed to hydrate data from IndexedDB:', err);
       setHydrationError((err as Error).message);
@@ -166,7 +184,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-white font-sans text-slate-800">
+    <div className="flex min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-white font-sans text-slate-800 relative">
       <Navigation 
         currentPage={currentPage} 
         onNavigate={handleNavigate}
@@ -253,11 +271,29 @@ const App: React.FC = () => {
         </Routes>
       </main>
 
+      {/* Non-blocking update notice banner */}
+      {swUpdateCallback && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-bounce max-w-sm">
+          <Sparkles className="w-6 h-6 text-pink-400 flex-shrink-0 animate-pulse" />
+          <div className="text-xs">
+            <p className="font-bold text-pink-300">App Update Ready (v1.2.2)</p>
+            <p className="text-[11px] text-slate-300">A new build was downloaded in background.</p>
+          </div>
+          <button
+            onClick={() => swUpdateCallback()}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-90 text-white text-xs font-black px-3.5 py-2 rounded-xl transition-all shadow-md active:scale-95 whitespace-nowrap ml-auto"
+          >
+            Update Now
+          </button>
+        </div>
+      )}
+
       <BackupModal
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         onDataRestored={hydrateAppData}
         workoutCount={workouts.length}
+        lastHydratedAt={lastHydratedAt}
       />
     </div>
   );
