@@ -67,6 +67,43 @@ const App: React.FC = () => {
     }
   };
 
+  // Sanitizer/Normalizer for workout records retrieved from storage
+  const sanitizeWorkouts = (rawWorkouts: any[]): Workout[] => {
+    if (!Array.isArray(rawWorkouts)) return [];
+    return rawWorkouts.filter(w => w && typeof w === 'object').map(w => ({
+      id: String(w.id || Date.now() + Math.random()),
+      title: String(w.title || 'Workout'),
+      date: String(w.date || new Date().toISOString()),
+      durationMinutes: Number(w.durationMinutes) || 0,
+      completed: Boolean(w.completed),
+      exercises: Array.isArray(w.exercises)
+        ? w.exercises.filter((ex: any) => ex && typeof ex === 'object').map((ex: any) => {
+            const rawType = ex.type || ex.exerciseType || ex.category || ex.movementType || 'Strength';
+            const type = (rawType === 'Cardio' || rawType === 'cardio' || rawType === 'CARDIO')
+              ? 'Cardio' as any
+              : 'Strength' as any;
+            return {
+              id: String(ex.id || Date.now() + Math.random()),
+              name: String(ex.name || 'Exercise'),
+              type,
+              sets: Array.isArray(ex.sets)
+                ? ex.sets.filter((s: any) => s && typeof s === 'object').map((s: any) => ({
+                    id: String(s.id || Date.now() + Math.random()),
+                    reps: Number(s.reps) || 0,
+                    weight: Number(s.weight) || 0,
+                    completed: Boolean(s.completed)
+                  }))
+                : [],
+              notes: ex.notes ? String(ex.notes) : undefined,
+              timeMinutes: ex.timeMinutes !== undefined ? Number(ex.timeMinutes) || 0 : undefined,
+              caloriesBurned: ex.caloriesBurned !== undefined ? Number(ex.caloriesBurned) || 0 : undefined,
+              completed: ex.completed !== undefined ? Boolean(ex.completed) : undefined,
+            };
+          })
+        : []
+    }));
+  };
+
   // Hydrate states from IndexedDB / localStorage on startup
   const hydrateAppData = useCallback(async () => {
     try {
@@ -77,7 +114,7 @@ const App: React.FC = () => {
         storageService.getItem<WeightEntry[]>('powher_weight_history', [])
       ]);
 
-      setWorkouts(Array.isArray(savedWorkouts) ? savedWorkouts : []);
+      setWorkouts(sanitizeWorkouts(savedWorkouts));
       setNutritionHistory(Array.isArray(savedNutrition) ? savedNutrition : []);
       setWeightHistory(Array.isArray(savedWeight) ? savedWeight : []);
     } catch (err) {
