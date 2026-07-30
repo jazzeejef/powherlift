@@ -1,36 +1,41 @@
-const CACHE_NAME = 'powher-lifts-v2';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon.png',
-  '/icon.svg'
-];
+const CACHE_NAME = 'powher-lifts-v1.2.1-b20260729';
 
-// Install Service Worker and cache essential offline assets
+// Install Service Worker and activate immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Pre-caching offline shell');
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+      console.log('[ServiceWorker] Pre-caching static media assets');
+      return cache.addAll([
+        '/icon.png',
+        '/icon.svg',
+        '/manifest.json'
+      ]).catch((err) => console.warn('[ServiceWorker] Pre-cache warning:', err));
+    })
   );
 });
 
-// Activate service worker and purge outdated caches
+// Activate service worker and purge ALL old cache versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('[ServiceWorker] Removing old cache version:', cache);
+            console.log('[ServiceWorker] Purging outdated cache version:', cache);
             return caches.delete(cache);
           }
         })
       );
     }).then(() => self.clients.claim())
   );
+});
+
+// Message listener to handle manual skipWaiting trigger
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Fetch event handling
@@ -40,41 +45,55 @@ self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
-  // Network-First strategy for SPA HTML Navigation requests
-  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+  const url = new URL(request.url);
+
+  // Network-First strategy for HTML Navigation, JS bundles, CSS bundles, manifest files, and asset chunks
+  const isNavigation = request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html');
+  const isCodeOrManifest = url.pathname.endsWith('.js') ||
+                           url.pathname.endsWith('.css') ||
+                           url.pathname.endsWith('.json') ||
+                           url.pathname.includes('/assets/');
+
+  if (isNavigation || isCodeOrManifest) {
     event.respondWith(
       fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseCopy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', responseCopy));
+            caches.open(CACHE_NAME).then((cache) => {
+              if (isNavigation) {
+                cache.put('/index.html', responseCopy);
+              } else {
+                cache.put(request, responseCopy);
+              }
+            });
           }
           return networkResponse;
         })
         .catch(() => {
-          console.log('[ServiceWorker] Network request failed, returning offline index.html');
-          return caches.match('/index.html') || caches.match('/');
+          console.log('[ServiceWorker] Network unavailable for:', request.url, '- using cached fallback');
+          if (isNavigation) {
+            return caches.match('/index.html').then((res) => res || caches.match('/'));
+          }
+          return caches.match(request);
         })
     );
     return;
   }
 
-  // Stale-While-Revalidate strategy for static JS, CSS, and images
+  // Cache-First with Network Fallback for other static resources (e.g. images)
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      const fetchPromise = fetch(request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseCopy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseCopy));
-          }
-          return networkResponse;
-        })
-        .catch((err) => {
-          console.warn('[ServiceWorker] Asset fetch failed:', err);
-        });
-
-      return cachedResponse || fetchPromise;
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseCopy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseCopy));
+        }
+        return networkResponse;
+      });
     })
   );
 });

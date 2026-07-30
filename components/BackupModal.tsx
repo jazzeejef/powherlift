@@ -81,12 +81,20 @@ export const BackupModal: React.FC<BackupModalProps> = ({
           </div>
           <div>
             <h3 className="text-xl font-black text-slate-800">App Settings & Backup</h3>
-            <p className="text-xs text-slate-400 font-semibold mt-0.5">App Version v1.2.0 (Build 2026.07)</p>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">App Version v1.2.1 (Build 2026.07.29-b121)</p>
           </div>
         </div>
 
         {/* System Status Summary */}
         <div className="bg-pink-50/60 border border-pink-100 rounded-2xl p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            <span className="flex items-center gap-1.5 text-slate-500">
+              <CheckCircle className="w-4 h-4 text-emerald-500" /> Active Build Version:
+            </span>
+            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-mono font-black border border-emerald-200">
+              v1.2.1-b20260729
+            </span>
+          </div>
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1.5 text-slate-500">
               <Database className="w-4 h-4 text-pink-500" /> Primary Database:
